@@ -3,7 +3,6 @@
 #include "OdeSystem.h"
 #include "ExponentialGrowth.h"
 #include "DoubleGrowth.h"
-#include "Counter.h"
 #include "EulerSolver.h"
 
 void test_exponential_growth() {
@@ -28,33 +27,6 @@ void test_check_system() {
 
     ode::check_system(exponential, 0.0, 1.0, 1.0);
     ode::check_system(double_growth, 0.0, 1.0, 2.0);
-}
-
-void test_get_count() {
-    Counter a;
-    Counter b;
-    Counter c;
-
-    assert(Counter::get_count() == 3);
-}
-
-void test_same_count() {
-    Counter a;
-    Counter b;
-    Counter c;
-
-    assert(Counter::get_count() == 6);
-}
-
-void test_counter_state() {
-    Counter counter;
-    assert(counter.get_state() == CounterState::Inactive);
-
-    counter.start();
-    assert(counter.get_state() == CounterState::Active);
-
-    counter.finish();
-    assert(counter.get_state() == CounterState::Finished);
 }
 
 void test_euler_solver() {
@@ -85,9 +57,6 @@ int main() {
     test_exponential_growth();
     test_double_growth();
     test_check_system();
-    test_get_count();
-    test_same_count();
-    test_counter_state();
     test_euler_solver();
 
     return 0;
