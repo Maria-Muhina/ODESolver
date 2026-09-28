@@ -8,4 +8,5 @@ add_executable(main
     ExponentialGrowth.cpp
     DoubleGrowth.cpp
     Counter.cpp
+    EulerSolver.cpp
 )
