@@ -7,8 +7,14 @@ std::vector<ode::SolutionPoint> ode::EulerSolver::solve(
             double t = t0;
             double x = x0;
             while (t < t_end) {
-                x = x + h * system.rhs(t, x);
-                t = t + h;
+                double step = h;
+                if (t + h <= t_end) {
+                    step = h;
+                }else {
+                    step = t_end - t;
+                }
+                x = x + step * system.rhs(t, x);
+                t = t + step;
                 result.push_back({t, x});
             }
 
