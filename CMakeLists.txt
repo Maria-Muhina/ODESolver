@@ -19,6 +19,7 @@ add_executable(main
     ExponentialGrowth.cpp
     DoubleGrowth.cpp
     EulerSolver.cpp
+    TimeDependentSystem.cpp
 )
 
 add_executable(EulerSolverTests
@@ -27,6 +28,7 @@ add_executable(EulerSolverTests
     ExponentialGrowth.cpp
     DoubleGrowth.cpp
     EulerSolver.cpp
+    TimeDependentSystem.cpp
 )
 
 target_link_libraries(EulerSolverTests

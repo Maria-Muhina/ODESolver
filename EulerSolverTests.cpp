@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 #include <cmath>
-#include <iostream>
 
 #include "EulerSolver.h"
 #include "ExponentialGrowth.h"
+#include "DoubleGrowth.h"
+#include "TimeDependentSystem.h"
 
 TEST(EulerSolverTest, SolvesExponentialGrowth) {
     ode::EulerSolver solver;
@@ -80,4 +81,95 @@ TEST(EulerSolverTest, ErrorDecreasesWithSmallerStep) {
     // Smaller h gives a more accurate estimate of the asymptotic order.
     EXPECT_NEAR(p_1, 1.0, 0.2);
     EXPECT_NEAR(p_2, 1.0, 0.1);
+}
+
+TEST(EulerSolverTest, SolvesExponentialGrowth_changed_x0) {
+    ode::EulerSolver solver;
+    ode::ExponentialGrowth system;
+
+    std::vector<ode::SolutionPoint> result =
+    solver.solve(system, 0.0, 2.0, 0.5, 0.1);
+
+    EXPECT_EQ(result.size(), 6);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x, 2.0, 1e-10);
+
+    EXPECT_NEAR(result[1].t, 0.1, 1e-10);
+    EXPECT_NEAR(result[1].x, 2.2, 1e-10);
+
+    EXPECT_NEAR(result[2].t, 0.2, 1e-10);
+    EXPECT_NEAR(result[2].x, 2.42, 1e-10);
+
+    EXPECT_NEAR(result[3].t, 0.3, 1e-10);
+    EXPECT_NEAR(result[3].x, 2.662, 1e-10);
+
+    EXPECT_NEAR(result[4].t, 0.4, 1e-10);
+    EXPECT_NEAR(result[4].x, 2.9282, 1e-10);
+
+    EXPECT_NEAR(result[5].t, 0.5, 1e-10);
+    EXPECT_NEAR(result[5].x, 3.22102, 1e-10);
+}
+
+TEST(EulerSolverTest, SolvesDoubleGrowth) {
+    ode::EulerSolver solver;
+    ode::DoubleGrowth system;
+
+    std::vector<ode::SolutionPoint> result =
+    solver.solve(system, 0.0, 1.0, 0.3, 0.1);
+
+    EXPECT_EQ(result.size(), 4);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x, 1.0, 1e-10);
+
+    EXPECT_NEAR(result[1].t, 0.1, 1e-10);
+    EXPECT_NEAR(result[1].x, 1.2, 1e-10);
+
+    EXPECT_NEAR(result[2].t, 0.2, 1e-10);
+    EXPECT_NEAR(result[2].x, 1.44, 1e-10);
+
+    EXPECT_NEAR(result[3].t, 0.3, 1e-10);
+    EXPECT_NEAR(result[3].x, 1.728, 1e-10);
+}
+
+TEST(EulerSolverTest, SolvesTimeDependentSystem) {
+    ode::EulerSolver solver;
+    ode::TimeDependentSystem system;
+
+    std::vector<ode::SolutionPoint> result =
+    solver.solve(system, 0.0, 0.0, 0.3, 0.1);
+
+    EXPECT_EQ(result.size(), 4);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x, 0.0, 1e-10);
+
+    EXPECT_NEAR(result[1].t, 0.1, 1e-10);
+    EXPECT_NEAR(result[1].x, 0.0, 1e-10);
+
+    EXPECT_NEAR(result[2].t, 0.2, 1e-10);
+    EXPECT_NEAR(result[2].x, 0.01, 1e-10);
+
+    EXPECT_NEAR(result[3].t, 0.3, 1e-10);
+    EXPECT_NEAR(result[3].x, 0.03, 1e-10);
+}
+
+TEST(EulerSolverTest, SolvesNegative_x0) {
+    ode::EulerSolver solver;
+    ode::ExponentialGrowth system;
+
+    std::vector<ode::SolutionPoint> result =
+    solver.solve(system, 0.0, -1.0, 0.2, 0.1);
+
+    EXPECT_EQ(result.size(), 3);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x, -1.0, 1e-10);
+
+    EXPECT_NEAR(result[1].t, 0.1, 1e-10);
+    EXPECT_NEAR(result[1].x, -1.1, 1e-10);
+
+    EXPECT_NEAR(result[2].t, 0.2, 1e-10);
+    EXPECT_NEAR(result[2].x, -1.21, 1e-10);
 }
