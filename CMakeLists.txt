@@ -20,22 +20,25 @@ add_executable(main
     DoubleGrowth.cpp
     EulerSolver.cpp
     TimeDependentSystem.cpp
+    RK4Solver.cpp
 )
 
-add_executable(EulerSolverTests
+add_executable(ODESolverTests
     EulerSolverTests.cpp
+    RK4SolverTests.cpp
     OdeSystem.cpp
     ExponentialGrowth.cpp
     DoubleGrowth.cpp
     EulerSolver.cpp
     TimeDependentSystem.cpp
+    RK4Solver.cpp
 )
 
-target_link_libraries(EulerSolverTests
+target_link_libraries(ODESolverTests
     PRIVATE
     GTest::gtest_main
 )
 
 include(GoogleTest)
 
-gtest_discover_tests(EulerSolverTests)
+gtest_discover_tests(ODESolverTests)
