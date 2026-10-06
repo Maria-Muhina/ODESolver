@@ -106,3 +106,34 @@ TEST(RK4SolverTest, SolvesTimeDependentSystem) {
     EXPECT_NEAR(result[3].x, 1.045, 1e-14);
     EXPECT_NEAR(result[3].t, 0.3, 1e-7);
 }
+
+TEST(RK4SolverTest, ErrorDecreasesWithSmallerStep) {
+    ode::RK4Solver solver;
+    ode::ExponentialGrowth system;
+
+    double exact = std::exp(0.3);
+
+    std::vector<ode::SolutionPoint> result_01 =
+        solver.solve(system, 0.0, 1.0, 0.3, 0.1);
+    double numerical_01 = result_01.back().x;
+    double error_01 = std::abs(exact - numerical_01);
+    ASSERT_LT(error_01, 1e-6);
+
+    std::vector<ode::SolutionPoint> result_005 =
+        solver.solve(system, 0.0, 1.0, 0.3, 0.05);
+    double numerical_05 = result_005.back().x;
+    double error_005 = std::abs(exact - numerical_05);
+    ASSERT_LT(error_005, 1e-6);
+
+    std::vector<ode::SolutionPoint> result_0025 =
+        solver.solve(system, 0.0, 1.0, 0.3, 0.025);
+    double numerical_025 = result_0025.back().x;
+    double error_0025 = std::abs(exact - numerical_025);
+    ASSERT_LT(error_0025, 1e-6);
+
+    double p1 = std::log(error_01 / error_005)/std::log(2.0);
+    EXPECT_NEAR(p1, 4.0, 0.1);
+
+    double p2 = std::log(error_005 / error_0025)/std::log(2.0);
+    EXPECT_NEAR(p2, 4.0, 0.05);
+}
