@@ -113,6 +113,12 @@ TEST(RK4SolverTest, ErrorDecreasesWithSmallerStep) {
 
     double exact = std::exp(0.3);
 
+    std::vector<ode::SolutionPoint> result_02 =
+        solver.solve(system, 0.0, 1.0, 0.3, 0.2);
+    double numerical_02 = result_02.back().x;
+    double error_02 = std::abs(exact - numerical_02);
+    ASSERT_LT(error_02, 1e-5);
+
     std::vector<ode::SolutionPoint> result_01 =
         solver.solve(system, 0.0, 1.0, 0.3, 0.1);
     double numerical_01 = result_01.back().x;
@@ -131,9 +137,16 @@ TEST(RK4SolverTest, ErrorDecreasesWithSmallerStep) {
     double error_0025 = std::abs(exact - numerical_025);
     ASSERT_LT(error_0025, 1e-6);
 
-    double p1 = std::log(error_01 / error_005)/std::log(2.0);
-    EXPECT_NEAR(p1, 4.0, 0.1);
+    double p1 = std::log(error_02 / error_01)/std::log(2.0);
+    std::cout << "p1 = " << p1 << "\n";
+    EXPECT_NEAR(p1, 4.0, 0.7);
 
-    double p2 = std::log(error_005 / error_0025)/std::log(2.0);
-    EXPECT_NEAR(p2, 4.0, 0.05);
+    double p2 = std::log(error_01 / error_005)/std::log(2.0);
+    EXPECT_NEAR(p2, 4.0, 0.1);
+
+    double p3 = std::log(error_005 / error_0025)/std::log(2.0);
+    EXPECT_NEAR(p3, 4.0, 0.05);
+
+    EXPECT_LT(p1, p2);
+    EXPECT_LT(p2, p3);
 }
