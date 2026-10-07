@@ -138,7 +138,6 @@ TEST(RK4SolverTest, ErrorDecreasesWithSmallerStep) {
     ASSERT_LT(error_0025, 1e-6);
 
     double p1 = std::log(error_02 / error_01)/std::log(2.0);
-    std::cout << "p1 = " << p1 << "\n";
     EXPECT_NEAR(p1, 4.0, 0.7);
 
     double p2 = std::log(error_01 / error_005)/std::log(2.0);
