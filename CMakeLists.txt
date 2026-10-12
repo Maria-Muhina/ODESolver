@@ -2,9 +2,22 @@ cmake_minimum_required(VERSION 3.16)
 
 project(ODESolver)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
 enable_testing()
 
 include(FetchContent)
+
+FetchContent_Declare(
+    eigen
+    URL https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+)
+
+FetchContent_MakeAvailable(eigen)
 
 FetchContent_Declare(
     googletest
@@ -34,10 +47,16 @@ add_executable(ODESolverTests
     RK4Solver.cpp
 )
 
+add_executable(Eigen_test Eigen_test.cpp)
+
+target_link_libraries(Eigen_test PRIVATE Eigen3::Eigen)
+
 target_link_libraries(ODESolverTests
     PRIVATE
     GTest::gtest_main
 )
+
+target_link_libraries(main PRIVATE Eigen3::Eigen)
 
 include(GoogleTest)
 
