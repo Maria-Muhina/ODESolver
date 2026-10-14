@@ -130,6 +130,18 @@ int main() {
     assert(std::abs(y0_rk4[0] - 3) < 1e-14);
     assert(std::abs(y0_rk4[1] - 2) < 1e-14);
 
+    auto result_rk4_zero_h = rk4_step(0.0, y0_rk4, 0.0);
+    std::cout << "result_rk4_zero_h = " << result_rk4_zero_h << "\n";
+    assert(std::abs(result_rk4_zero_h[0] - 3) < 1e-14);
+    assert(std::abs(result_rk4_zero_h[1] - 2) < 1e-14);
+
+    Eigen::VectorXd y0_rk4_zeros(2);
+    y0_rk4_zeros << 0, 0;
+    auto result_rk4_zero_y0 = rk4_step(0.0, y0_rk4_zeros, 0.1);
+    std::cout << "result_rk4_zero_y0 = " << result_rk4_zero_y0 << "\n";
+    assert(std::abs(result_rk4_zero_y0[0] - 0) < 1e-14);
+    assert(std::abs(result_rk4_zero_y0[1] - 0) < 1e-14);
+
     std::vector<double> step_sizes = {0.1, 0.05, 0.025};
     double T = 1.0;
     std::vector<double> errors_euler(3);
