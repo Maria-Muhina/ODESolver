@@ -5,7 +5,11 @@
 namespace ode {
 class TimeDependentSystem : public OdeSystem {
     public:
-        double rhs(double t, double x) const override;
-};
+        virtual void rhs(
+            double t,
+            const State& x,
+            State& dxdt
+        ) const override;
+    };
 
 }

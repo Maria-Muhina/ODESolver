@@ -1,5 +1,9 @@
 #include "TimeDependentSystem.h"
 
-double ode::TimeDependentSystem::rhs(double t, double x) const {
-    return t;
+void ode::TimeDependentSystem::rhs(
+            double t,
+            const State& x,
+            State& dxdt
+        ) const {
+    dxdt(0) = t;
 }

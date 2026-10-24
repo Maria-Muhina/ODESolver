@@ -1,5 +1,9 @@
 #include "DoubleGrowth.h"
 
-double ode::DoubleGrowth::rhs(double t, double x) const {
-    return 2*x;
+void ode::DoubleGrowth::rhs(
+            double t,
+            const State& x,
+            State& dxdt
+        ) const {
+    dxdt(0) = 2*x(0);
 };

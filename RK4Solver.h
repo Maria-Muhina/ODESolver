@@ -1,26 +1,20 @@
 #pragma once
 
-#include <vector>
+#include "OdeTypes.h"
 #include "OdeSystem.h"
 
 namespace ode
 {
-    struct SolutionPoint 
-    {
-    double t;
-    double x;
-    };
-
     class RK4Solver
     {
     public:
-        std::vector<SolutionPoint> solve(
+        Trajectory solve(
             const OdeSystem& system,
             double t0,
-            double x0,
+            const State& x0,
             double t_end,
             double h
         ) const;
-    };
+};
     
 } 
