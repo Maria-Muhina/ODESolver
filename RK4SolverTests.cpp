@@ -9,6 +9,7 @@
 #include "DoubleGrowth.h"
 #include "TimeDependentSystem.h"
 #include "HarmonicOscillator.h"
+#include "RK4Step.h"
 
 TEST(RK4SolverTest, MethodTest) {
     ode::RK4Solver solver;
@@ -20,7 +21,7 @@ TEST(RK4SolverTest, MethodTest) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 0.1, 0.1);
 
-    EXPECT_EQ(result.size(), 2);
+    ASSERT_EQ(result.size(), 2);
     EXPECT_NEAR(result[1].x(0), 1.1051708333333333, 1e-12);
 }
 
@@ -34,7 +35,7 @@ TEST(RK4SolverTest, ExactSolutionCompareTest) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 0.3, 0.1);
 
-    EXPECT_EQ(result.size(), 4);
+    ASSERT_EQ(result.size(), 4);
 
     EXPECT_DOUBLE_EQ(result[0].x(0), 1.0);
     EXPECT_DOUBLE_EQ(result[0].t, 0.0);
@@ -59,7 +60,7 @@ TEST(RK4SolverTest, ExactSolutionCompareTest_changed_x0) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 0.3, 0.1);
 
-    EXPECT_EQ(result.size(), 4);
+    ASSERT_EQ(result.size(), 4);
 
     EXPECT_DOUBLE_EQ(result[0].x(0), 2.0);
     EXPECT_DOUBLE_EQ(result[0].t, 0.0);
@@ -84,7 +85,7 @@ TEST(RK4SolverTest, SolvesDoubleGrowth) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 0.3, 0.1);
 
-    EXPECT_EQ(result.size(), 4);
+    ASSERT_EQ(result.size(), 4);
 
     EXPECT_DOUBLE_EQ(result[0].x(0), 1.0);
     EXPECT_DOUBLE_EQ(result[0].t, 0.0);
@@ -109,7 +110,7 @@ TEST(RK4SolverTest, SolvesTimeDependentSystem) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 0.3, 0.1);
 
-    EXPECT_EQ(result.size(), 4);
+    ASSERT_EQ(result.size(), 4);
 
     EXPECT_DOUBLE_EQ(result[0].x(0), 1.0);
     EXPECT_DOUBLE_EQ(result[0].t, 0.0);
@@ -177,7 +178,7 @@ TEST(RK4SolverTest, SolvesHarmonicOscillator) {
     ode::Trajectory result =
     solver.solve(system, 0.0, x0, 1.0, 0.1);
 
-    EXPECT_EQ(result.size(), 11);
+    ASSERT_EQ(result.size(), 11);
 
     EXPECT_EQ(result.back().x.size(), 2);
     EXPECT_NEAR(result.back().x(0), std::cos(1.0), 1e-4);
@@ -220,4 +221,20 @@ TEST(RK4SolverTest, RejectsInvalidTimeParameters) {
     ASSERT_EQ(result.size(), 1);
     EXPECT_DOUBLE_EQ(result[0].t, 1.0);
     EXPECT_DOUBLE_EQ(result[0].x(0), 1.0);
+}
+
+TEST(RK4StepTest, ApproximatesHarmonicOscillator) {
+    ode::HarmonicOscillator system;
+
+    ode::State x0(2);
+    x0 << 1.0, 0.0;
+
+    ode::State x =
+        ode::rk4_step(system, 0.0, x0, 0.1);
+
+    EXPECT_EQ(x.size(), 2);
+    EXPECT_NEAR(x(0), std::cos(0.1), 1e-6);
+    EXPECT_NEAR(x(1), -std::sin(0.1), 1e-6);
+    EXPECT_DOUBLE_EQ(x0(0), 1.0);
+    EXPECT_DOUBLE_EQ(x0(1), 0.0);
 }

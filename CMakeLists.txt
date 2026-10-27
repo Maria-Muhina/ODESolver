@@ -35,6 +35,7 @@ add_executable(main
     TimeDependentSystem.cpp
     RK4Solver.cpp
     OdeValidation.cpp
+    RK4Step.cpp
 )
 
 add_executable(ODESolverTests
@@ -48,6 +49,7 @@ add_executable(ODESolverTests
     RK4Solver.cpp
     HarmonicOscillator.cpp
     OdeValidation.cpp
+    RK4Step.cpp
 )
 
 add_executable(Eigen_test Eigen_test.cpp)
