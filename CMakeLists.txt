@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(ODESolver)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(/W4)
 else()
@@ -36,11 +40,13 @@ add_executable(main
     RK4Solver.cpp
     OdeValidation.cpp
     RK4Step.cpp
+    AdaptiveRK4Solver.cpp
 )
 
 add_executable(ODESolverTests
     EulerSolverTests.cpp
     RK4SolverTests.cpp
+    AdaptiveRK4SolverTests.cpp
     OdeSystem.cpp
     ExponentialGrowth.cpp
     DoubleGrowth.cpp
@@ -50,6 +56,7 @@ add_executable(ODESolverTests
     HarmonicOscillator.cpp
     OdeValidation.cpp
     RK4Step.cpp
+    AdaptiveRK4Solver.cpp
 )
 
 add_executable(Eigen_test Eigen_test.cpp)
