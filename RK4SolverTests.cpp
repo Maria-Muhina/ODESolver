@@ -10,6 +10,7 @@
 #include "TimeDependentSystem.h"
 #include "HarmonicOscillator.h"
 #include "RK4Step.h"
+#include "DecaySystem.h"
 
 TEST(RK4SolverTest, MethodTest) {
     ode::RK4Solver solver;
@@ -237,4 +238,71 @@ TEST(RK4StepTest, ApproximatesHarmonicOscillator) {
     EXPECT_NEAR(x(1), -std::sin(0.1), 1e-6);
     EXPECT_DOUBLE_EQ(x0(0), 1.0);
     EXPECT_DOUBLE_EQ(x0(1), 0.0);
+}
+
+double rk4_stability_function(double z) {
+    return 1.0 + z + z*z/2.0
+         + z*z*z/6.0 + z*z*z*z/24.0;
+}
+
+TEST(RK4SolverTest, DecayStable) {
+    ode::RK4Solver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+
+    double h = 0.25;
+    ode::Trajectory result =
+        solver.solve(system, 0.0, x0, 3.0, h);
+
+    ASSERT_EQ(result.size(), 13);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x(0), 1.0, 1e-10);
+    double z = -10*h;
+    for (std::size_t i=1; i < result.size(); i++){
+        EXPECT_NEAR(
+            result[i].x(0),
+            std::pow(rk4_stability_function(z), i) * x0(0),
+            1e-10
+        );
+    }
+    EXPECT_NEAR(result.back().t, 3.0, 1e-10);
+
+    EXPECT_GT(
+        std::abs(result.front().x(0)),
+        std::abs(result.back().x(0))
+    );
+}
+
+TEST(RK4SolverTest, DecayUnstable) {
+    ode::RK4Solver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+
+    double h = 0.30;
+    ode::Trajectory result =
+        solver.solve(system, 0.0, x0, 3.0, h);
+
+    ASSERT_EQ(result.size(), 11);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x(0), 1.0, 1e-10);
+    double z = -10*h;
+    for (std::size_t i=1; i < result.size(); i++){
+        EXPECT_NEAR(
+            result[i].x(0),
+            std::pow(rk4_stability_function(z), i) * x0(0),
+            1e-10
+        );
+    }
+    EXPECT_NEAR(result.back().t, 3.0, 1e-10);
+
+    EXPECT_GT(
+        std::abs(result.back().x(0)),
+        std::abs(result.front().x(0))
+    );
 }

@@ -6,6 +6,7 @@
 #include "ExponentialGrowth.h"
 #include "DoubleGrowth.h"
 #include "TimeDependentSystem.h"
+#include "DecaySystem.h"
 
 TEST(EulerSolverTest, SolvesExponentialGrowth) {
     ode::EulerSolver solver;
@@ -242,4 +243,93 @@ TEST(EulerSolverTest, RejectsInvalidTimeParameters) {
     ASSERT_EQ(result.size(), 1);
     EXPECT_DOUBLE_EQ(result[0].t, 1.0);
     EXPECT_DOUBLE_EQ(result[0].x(0), 1.0);
+}
+
+TEST(EulerSolverTest, DecayStableZeroFactor) {
+    ode::EulerSolver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+
+    ode::Trajectory result =
+    solver.solve(system, 0.0, x0, 2.0, 0.1);
+
+    ASSERT_EQ(result.size(), 21);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x(0), 1.0, 1e-10);
+    EXPECT_NEAR(result[1].x(0), 0.0, 1e-10);
+    EXPECT_NEAR(result[2].x(0), 0.0, 1e-10);
+    EXPECT_NEAR(result[3].x(0), 0.0, 1e-10);
+    EXPECT_NEAR(result.back().t, 2.0, 1e-10);
+    EXPECT_NEAR(result.back().x(0), 0.0, 1e-10);
+}
+
+TEST(EulerSolverTest, DecayStabilityBoundary) {
+    ode::EulerSolver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+
+    ode::Trajectory result =
+        solver.solve(system, 0.0, x0, 2.0, 0.2);
+
+    ASSERT_EQ(result.size(), 11);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    for (std::size_t i=0; i < result.size(); i++){
+        EXPECT_NEAR(result[i].x(0), i % 2 == 0 ? 1.0 : -1.0, 1e-10);
+    }
+    EXPECT_NEAR(result.back().t, 2.0, 1e-10);
+}
+
+TEST(EulerSolverTest, DecayUnstable) {
+    ode::EulerSolver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+
+    ode::Trajectory result =
+        solver.solve(system, 0.0, x0, 2.0, 0.25);
+
+    ASSERT_EQ(result.size(), 9);
+
+    EXPECT_NEAR(result[0].t, 0.0, 1e-10);
+    EXPECT_NEAR(result[0].x(0), 1.0, 1e-10);
+    for (std::size_t i=1; i < result.size(); i++){
+        EXPECT_NEAR(result[i].x(0), std::pow(-1.5, i), 1e-10);
+    }
+    EXPECT_NEAR(result.back().t, 2.0, 1e-10);
+
+    EXPECT_GT(
+        std::abs(result.back().x(0)),
+        std::abs(result.front().x(0))
+    );
+}
+
+TEST(EulerSolverTest, DecayAccuracyComparison) {
+    ode::EulerSolver solver;
+    ode::DecaySystem system;
+
+    ode::State x0(1);
+    x0 << 1.0;
+    double x_end_exact = std::exp(-10.0);
+
+    ode::Trajectory result_005 =
+        solver.solve(system, 0.0, x0, 1.0, 0.05);
+    double x_end_005 = result_005.back().x(0);
+
+    ode::Trajectory result_015 =
+        solver.solve(system, 0.0, x0, 1.0, 0.15);
+    double x_end_015 = result_015.back().x(0);
+
+    double error_005 = std::abs(x_end_005 - x_end_exact);
+    double error_015 = std::abs(x_end_015 - x_end_exact);
+
+    EXPECT_LT(error_005, error_015);
+    EXPECT_NEAR(result_005.back().t, 1.0, 1e-10);
+    EXPECT_NEAR(result_015.back().t, 1.0, 1e-10);
 }
