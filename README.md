@@ -21,11 +21,17 @@ When $n=1$, the problem reduces to a scalar ODE. A numerical solver takes an ODE
 The main components are:
 
 - `OdeSystem` — interface for the right-hand side of an ODE;
+
 - `EulerSolver` — Forward Euler implementation;
+
 - `RK4Solver` — classical fourth-order Runge–Kutta implementation with a fixed nominal step;
+
 - `RK4Step` — reusable implementation of a single classical RK4 step;
+
 - `AdaptiveRK4Solver` — adaptive RK4 implementation using step doubling;
+
 - concrete ODE systems used for testing;
+
 - GoogleTest-based automated verification.
 
 The fixed-step solvers share the same basic interface. The adaptive solver adds an absolute local error tolerance and interprets the supplied step size as the initial step.
@@ -39,14 +45,11 @@ The following example integrates the scalar test problem $x'(t)=x(t)$, $x(0)=1$,
 ```cpp
 #include "AdaptiveRK4Solver.h"
 #include "ExponentialGrowth.h"
-
 int main() {
     ode::ExponentialGrowth system;
     ode::AdaptiveRK4Solver solver;
-
     ode::State x0(1);
     x0 << 1.0;
-
     ode::Trajectory solution = solver.solve(
         system,
         0.0,    // initial time
@@ -55,7 +58,6 @@ int main() {
         0.2,    // initial step size
         1e-6    // absolute local error tolerance
     );
-
     double final_value = solution.back().x(0);
     (void)final_value; // use the computed value as needed
 }
@@ -78,18 +80,16 @@ Core numerical API:
   RK4Step.h / RK4Step.cpp
   RK4Solver.h / RK4Solver.cpp
   AdaptiveRK4Solver.h / AdaptiveRK4Solver.cpp
-
 Test systems:
   ExponentialGrowth.h / ExponentialGrowth.cpp
   DoubleGrowth.h / DoubleGrowth.cpp
   TimeDependentSystem.h / TimeDependentSystem.cpp
   HarmonicOscillator.h / HarmonicOscillator.cpp
-
+  DecaySystem.h
 Automated tests:
   EulerSolverTests.cpp
   RK4SolverTests.cpp
   AdaptiveRK4SolverTests.cpp
-
 Project and experiments:
   CMakeLists.txt
   README.md
@@ -137,8 +137,11 @@ where $x(t), x_0 \in \mathbb{R}^n$ and $f(t,x) \in \mathbb{R}^n$.
 Here:
 
 - $t$ is the independent variable;
+
 - $x(t)$ is the state vector;
+
 - $f(t,x)$ is the right-hand side of the differential equation;
+
 - $t_0$ and $x_0$ define the initial condition.
 
 The numerical solution is computed at a sequence of time points
@@ -170,35 +173,39 @@ This problem is useful because the exact solution is known, allowing the numeric
 The project also contains several other ODE systems:
 
 - $x'(t)=2x(t)$, used to verify that the solvers work with a different growth rate.
-- $x'(t)=t$, $x(0)=1$, whose exact solution is
 
-  ```math
-  x(t)=1+\frac{t^2}{2}.
-  ```
+**Time-dependent system:** $x'(t)=t$, $x(0)=1$, whose exact solution is
 
-  This problem verifies correct handling of time-dependent right-hand sides.
-- A two-dimensional harmonic oscillator:
+```math
+x(t)=1+\frac{t^2}{2}.
+```
 
-  ```math
-  \begin{cases}
-  q'(t)=v(t),\\
-  v'(t)=-q(t),
-  \end{cases}
-  ```
+This problem verifies correct handling of time-dependent right-hand sides.
 
-  with initial conditions
+**Two-dimensional harmonic oscillator:**
 
-  ```math
-  q(0)=1, \qquad v(0)=0.
-  ```
+```math
+\begin{cases}
+q'(t)=v(t),\\
+v'(t)=-q(t).
+\end{cases}
+```
 
-  The exact solution is
+with initial conditions
 
-  ```math
-  q(t)=\cos(t), \qquad v(t)=-\sin(t).
-  ```
+```math
+q(0)=1, \qquad v(0)=0.
+```
 
-  This system is used to verify that both fixed-step and adaptive RK4 handle vector-valued states and coupled ODEs.
+The exact solution is
+
+```math
+q(t)=\cos(t), \qquad v(t)=-\sin(t).
+```
+
+This system is used to verify that both fixed-step and adaptive RK4 handle vector-valued states and coupled ODEs.
+
+**Decay system:** $x'(t)=-10x(t)$, $x(0)=1$, used for absolute stability experiments with Euler and RK4. The system is defined in `DecaySystem.h`.
 
 Using several systems helps avoid testing the solver against only one specific form of $f(t,x)$.
 
@@ -264,7 +271,9 @@ Fixed-step RK4 uses the same solver interface as Euler, making the methods direc
 For each attempted step of length $h$, the solver computes:
 
 - `x_full`: one RK4 step of length $h$;
+
 - `x_half1`: one RK4 step of length $h/2$;
+
 - `x_half2`: another RK4 step of length $h/2$, starting from `x_half1` at time $t+h/2$.
 
 For sufficiently small steps, the estimate of the local error in the two-half-step approximation is
@@ -295,22 +304,35 @@ Each attempted adaptive step performs three RK4 steps, or **12 evaluations of `r
 
 Automated tests cover method-specific behavior as well as the reusable RK4 step and the adaptive controller.
 
-The test suite currently contains **24 GoogleTest test cases** (9 Euler, 8 fixed-step RK4, 1 reusable RK4 step, and 6 adaptive RK4). All 24 passed in the latest user-reported run.
+The test suite currently contains **30 GoogleTest test cases** (13 Euler, 10 fixed-step RK4, 1 reusable RK4 step, and 6 adaptive RK4). All 30 passed in the latest reported run.
 
 The tests cover:
 
 - integration of the primary test problem;
+
 - reaching the requested final time, including cases where floating-point rounding would otherwise add an extra step;
+
 - different initial conditions and right-hand sides;
+
 - time-dependent right-hand sides;
+
 - numerical accuracy against known exact solutions;
+
 - decreasing error with a smaller step size and observed convergence order;
+
 - integration of a two-dimensional harmonic oscillator;
+
 - rejection of invalid integration parameters;
+
 - correct handling of a zero-length integration interval;
+
 - adaptive rejection of a large initial step and increasing time at accepted points;
+
 - zero-error step-size growth and a vector-valued adaptive oscillator test;
-- invalid adaptive tolerances and inability to advance floating-point time.
+
+- invalid adaptive tolerances and inability to advance floating-point time;
+- absolute stability experiments for Euler and RK4 using $x'=-10x$;
+- comparison of absolute endpoint errors for two stable Euler step sizes.
 
 ### Convergence experiments
 
@@ -397,6 +419,103 @@ The observed increase of these particular order estimates is a property of this 
 
 ---
 
+### Stability and stiff ODEs
+
+#### Absolute stability
+
+For the linear test equation
+
+```math
+x'(t)=\lambda x(t), \qquad \lambda<0,
+```
+
+the exact solution decays exponentially. When a one-step numerical method is applied with step size $h$, its amplification factor can be written as
+
+```math
+x_{n+1}=R(z)x_n, \qquad z=h\lambda.
+```
+
+The numerical solution decays asymptotically for this test equation when $|R(z)|<1$. This criterion concerns **absolute stability**, not the accuracy of the approximation.
+
+**Forward Euler** has stability function
+
+```math
+R_{\mathrm{Euler}}(z)=1+z.
+```
+
+For real $\lambda<0$, the asymptotically stable step sizes satisfy
+
+```math
+0<h<\frac{2}{|\lambda|}.
+```
+
+**Classical RK4** has stability function
+
+```math
+R_{\mathrm{RK4}}(z)=1+z+\frac{z^2}{2}+\frac{z^3}{6}+\frac{z^4}{24}.
+```
+
+Its stability interval on the negative real axis is approximately $-2.785294<z<0$, giving
+
+```math
+0<h<\frac{2.785294}{|\lambda|}.
+```
+
+RK4 allows a larger stable step on this test equation, but a fixed RK4 step evaluates `rhs()` four times, compared with once for Euler.
+
+#### Stability experiments
+
+We used the test system $x'=-10x$, $x(0)=1$ (`DecaySystem.h`). The GoogleTest cases verify individual numerical states against $x_n=R(h\lambda)^n x_0$ for the constant-step experiments.
+
+**Euler on $[0,2]$:**
+
+| Nominal step $h$ | Amplification factor | Observed behavior |
+|---:|---:|---|
+| 0.10 | 0 | Becomes zero after the first step |
+| 0.20 | -1 | Alternating signs with constant amplitude (stability boundary) |
+| 0.25 | -1.5 | Alternating signs with growing amplitude |
+
+**RK4 on $[0,3]$:**
+
+| Nominal step $h$ | Amplification factor | Observed behavior |
+|---:|---:|---|
+| 0.25 | 0.6484375 | Stable decay |
+| 0.30 | 1.375 | Unstable growth |
+
+Both integration intervals are integer multiples of the corresponding nominal step sizes, so they do not require a substantial shortened final step.
+
+#### Stability does not guarantee accuracy
+
+We also compared two **absolutely stable** Euler step sizes on $[0,1]$. The exact endpoint value is $x(1)=e^{-10}\approx4.53999\times10^{-5}$.
+
+| Nominal step $h$ | Numerical endpoint $x(1)$ | Absolute endpoint error |
+|---:|---:|---:|
+| 0.05 | $9.53674\times10^{-7}$ | $4.44463\times10^{-5}$ |
+| 0.15 | Approximately $0$ | $4.53999\times10^{-5}$ |
+
+At $h=0.15$, the final step is shortened to approximately $0.1$ to reach $t=1$; the near-zero endpoint reflects the resulting near-zero Euler amplification factor. Both calculations satisfy the absolute stability condition, but their endpoint errors are large compared with the exact value.
+
+These observations do not by themselves establish a convergence order; that requires a step-refinement study.
+
+#### Why stiffness matters
+
+Stiff problems can force an explicit solver to use a much smaller step for **stability** than is needed to resolve the solution's slower, accuracy-relevant behavior. For example,
+
+```math
+\begin{cases}
+x_1'=-x_1,\\
+x_2'=-1000x_2
+\end{cases}
+```
+
+contains a fast transient and a slower component. Explicit Euler requires $h<0.002$ for asymptotic stability of the full system, even after the fast component has almost decayed. Adaptive step-size control does not eliminate the stability restrictions of the underlying explicit RK4 method.
+
+Implicit methods, such as backward Euler and BDF methods, can be more suitable for stiff problems because of their stability properties. However, they require additional computation per step, often including the solution of nonlinear or linear systems. **No implicit solver is implemented in this project.**
+
+Selecting a method therefore requires considering **stability, accuracy, and computational cost** together.
+
+---
+
 ### Adaptive RK4 accuracy and evaluation cost
 
 For $x'(t)=x(t)$ with $x(0)=1$, integrated on $[0,1]$ with initial step $0.2$, the observed adaptive results were:
@@ -429,7 +548,9 @@ The evaluation counts come from a temporary counting experiment, not a permanent
 ### Requirements
 
 - CMake **3.16 or newer**.
+
 - A compatible C++ compiler and build tool (the project enables `/W4` for MSVC or `-Wall -Wextra -Wpedantic` for other compilers).
+
 - Network access on the first configuration so CMake `FetchContent` can download **Eigen 3.4.0** and **GoogleTest 1.14.0**.
 
 **C++ standard:** the supplied `CMakeLists.txt` does not explicitly set `CMAKE_CXX_STANDARD` or `target_compile_features`. The exact minimum supported standard has therefore not been established by the project's build configuration. Pinning and testing a standard is a future reproducibility improvement.
@@ -479,20 +600,31 @@ To run a specific GoogleTest test:
 The current implementation deliberately has a limited scope. It supports:
 
 - scalar and vector-valued ODE systems through `Eigen::VectorXd`;
+
 - fixed nominal step sizes with explicit Euler and classical RK4;
+
 - adaptive classical RK4 using step doubling and an absolute local error tolerance;
+
 - forward integration with a shortened final step;
+
 - automated verification with GoogleTest.
 
 Current limitations include:
 
 - Only forward integration is supported (`t_end >= t0`, `h > 0`).
+
 - The entire computed trajectory is stored in memory.
+
 - Adaptive RK4 currently uses only a scalar absolute local tolerance; relative and component-wise scaled tolerances are not implemented.
+
 - Stiff ODE methods, event detection, and backward integration are not implemented.
+
 - State dimension consistency and state-value finiteness are not fully validated.
+
 - Time-step advancement is checked and a runtime error is raised if a proposed step cannot advance the floating-point time. Extreme floating-point scales, very small tolerances, and overflow or underflow in step-size control are not comprehensively handled.
+
 - A production-level safeguard against excessive rejected attempts and comprehensive validation of error-controller intermediates are not implemented.
+
 - Systematic benchmarking, profiling, continuous integration, and extended public API documentation are not yet implemented.
 
 These features are intentionally outside the current implementation scope.
@@ -504,10 +636,15 @@ These features are intentionally outside the current implementation scope.
 The project is being developed incrementally, with emphasis on:
 
 - numerical correctness;
+
 - reproducible verification;
+
 - clear solver interfaces;
+
 - maintainable C++ code;
+
 - automated testing;
+
 - progressively stronger software-engineering practices.
 
 The Euler, fixed-step RK4, and adaptive RK4 implementations form the numerical foundation for later work on solver robustness, accuracy controls, and scientific-software engineering.
