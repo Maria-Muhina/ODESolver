@@ -59,6 +59,17 @@ add_executable(ODESolverTests
     AdaptiveRK4Solver.cpp
 )
 
+add_executable(SolverBenchmark
+    SolverBenchmark.cpp
+    OdeSystem.cpp
+    EulerSolver.cpp
+    ExponentialGrowth.cpp
+    OdeValidation.cpp
+    RK4Solver.cpp
+    RK4Step.cpp
+    AdaptiveRK4Solver.cpp
+)
+
 add_executable(Eigen_test Eigen_test.cpp)
 
 target_link_libraries(Eigen_test PRIVATE Eigen3::Eigen)
@@ -70,6 +81,8 @@ target_link_libraries(ODESolverTests
 )
 
 target_link_libraries(main PRIVATE Eigen3::Eigen)
+
+target_link_libraries(SolverBenchmark PRIVATE Eigen3::Eigen)
 
 include(GoogleTest)
 

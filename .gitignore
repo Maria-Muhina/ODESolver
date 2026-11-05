@@ -3,3 +3,9 @@ build/
 *.out
 
 Testing/
+
+/build-release/
+/build-profile/
+/profile.txt
+/profile_euler.txt
+/gmon.out
