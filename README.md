@@ -4,7 +4,7 @@ A small C++ project for implementing and testing numerical methods for ordinary 
 
 The project implements three explicit ODE solvers: Forward Euler, classical fourth-order Runge–Kutta (RK4) with a fixed nominal step, and adaptive RK4 with local error estimation by step doubling.
 
-The implementation is intentionally small. The goal at this stage is to establish a clean numerical-solver foundation before adding more advanced numerical methods and engineering infrastructure.
+The implementation focuses on a compact, testable numerical-solver foundation, with explicit interfaces, regression tests, and reproducible performance experiments.
 
 ---
 
@@ -32,7 +32,9 @@ The main components are:
 
 - concrete ODE systems used for testing;
 
-- GoogleTest-based automated verification.
+- GoogleTest-based automated verification;
+
+- a standalone benchmarking executable for runtime experiments and RHS evaluation counts.
 
 The fixed-step solvers share the same basic interface. The adaptive solver adds an absolute local error tolerance and interprets the supplied step size as the initial step.
 
@@ -69,7 +71,7 @@ int main() {
 
 ## Project structure
 
-The project currently uses a flat source layout at the repository root, rather than separate `src/`, `include/`, and `tests/` directories. The following is a grouped inventory of the relevant files (not a directory hierarchy):
+The project uses a flat source layout at the repository root, rather than separate `src/`, `include/`, and `tests/` directories. The following is a grouped inventory of the relevant files (not a directory hierarchy):
 
 ```text
 Core numerical API:
@@ -95,6 +97,7 @@ Project and experiments:
   README.md
   main.cpp
   Eigen_test.cpp
+  SolverBenchmark.cpp
   Counter.h / Counter.cpp
   .gitignore
 ```
@@ -116,7 +119,7 @@ Project and experiments:
 
 `SolutionPoint` stores a time and its corresponding state; `Trajectory` is a sequence of solution points. All three solvers return a trajectory; the adaptive solver stores accepted points only.
 
-`main.cpp` provides manual checks and examples; `Eigen_test.cpp` is an Eigen experimentation target. Automated regression tests cover Euler, fixed-step RK4, the shared RK4 step, and adaptive RK4. The one-step RK4 test is part of the RK4 test source, not a separate test source file.
+`main.cpp` provides manual checks and examples; `Eigen_test.cpp` is an Eigen experimentation target. `SolverBenchmark.cpp` measures complete solver calls and contains a diagnostic counting wrapper for `rhs()` evaluations. Automated regression tests cover Euler, fixed-step RK4, the shared RK4 step, and adaptive RK4. The one-step RK4 test is part of the RK4 test source, not a separate test source file.
 
 Generated build and test artifacts are not part of the project source code.
 
@@ -304,7 +307,7 @@ Each attempted adaptive step performs three RK4 steps, or **12 evaluations of `r
 
 Automated tests cover method-specific behavior as well as the reusable RK4 step and the adaptive controller.
 
-The test suite currently contains **30 GoogleTest test cases** (13 Euler, 10 fixed-step RK4, 1 reusable RK4 step, and 6 adaptive RK4). All 30 passed in the latest reported run.
+The test suite contains **30 GoogleTest test cases** (13 Euler, 10 fixed-step RK4, 1 reusable RK4 step, and 6 adaptive RK4). All 30 passed in the latest reported run.
 
 The tests cover:
 
@@ -331,7 +334,9 @@ The tests cover:
 - zero-error step-size growth and a vector-valued adaptive oscillator test;
 
 - invalid adaptive tolerances and inability to advance floating-point time;
+
 - absolute stability experiments for Euler and RK4 using $x'=-10x$;
+
 - comparison of absolute endpoint errors for two stable Euler step sizes.
 
 ### Convergence experiments
@@ -543,17 +548,155 @@ The evaluation counts come from a temporary counting experiment, not a permanent
 
 ---
 
+## Benchmarking and Profiling
+
+This section documents performance experiments with the C++ ODE solvers. The experiments compare computational cost, examine the trade-off between runtime and accuracy, and use profiling evidence to evaluate a potential optimization. **The reported timings are measurements from one WSL2 environment, not general performance guarantees.**
+
+### Environment and methodology
+
+- **Environment:** Ubuntu under WSL2 (Linux kernel `6.18.33.2-microsoft-standard-WSL2`), GCC 15.2.0, CMake 4.2.3.
+- **Test problem:** scalar exponential growth, `x' = x`, `x(0) = 1`, on `[0, 10]`. The exact endpoint is `x(10) = exp(10)`.
+- **Benchmark executable:** `SolverBenchmark` (a separate CMake target), measured with `std::chrono::steady_clock`.
+- **Timing procedure:** one warm-up call, followed by repeated complete `solve()` calls; elapsed time is divided by the number of repetitions. A checksum accumulates final-state values to make the computations observable. Solution diagnostics are evaluated outside the timed interval.
+- **Build mode:** optimized CMake `Release` for runtime comparisons. An independent, instrumented build was used for GNU `gprof`; profiler measurements were **not** mixed with Release timings.
+- **Work measured:** each `solve()` computes and returns the full `Trajectory`. Timings therefore include integration, trajectory storage, and associated allocation overhead—not merely arithmetic or `rhs()` execution.
+
+Build and run the normal benchmark:
+
+```bash
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release --target SolverBenchmark
+./build-release/SolverBenchmark
+```
+
+The benchmark supports a configurable number of repetitions (default: 100). Five separate runs were collected for the fixed-step, equal-`h` comparison below; each run averaged 100 solver calls. Other timing rows in this section are illustrative measurements, not necessarily medians of equivalent runs.
+
+### 1. Euler vs. RK4 at the same step size
+
+Using `h = 0.01`, both fixed-step solvers take 1,000 steps over `[0, 10]`. Euler performs one right-hand-side (`rhs`) evaluation per step, whereas classical RK4 performs four.
+
+| Metric | Euler | RK4 |
+|---|---:|---:|
+| Step size | 0.01 | 0.01 |
+| Steps | 1,000 | 1,000 |
+| RHS evaluations | 1,000 | 4,000 |
+| Median solve time across five runs | **63.931 µs** | **183.115 µs** |
+
+The ratio of the two medians is approximately **2.86**. RK4 costs more per fixed-size step, but it also provides much higher accuracy. Comparing only runtimes at identical `h` does **not** determine which solver is more efficient for an accuracy-constrained task.
+
+### 2. Euler vs. RK4 at a required accuracy
+
+We next required the **relative error in the final state** to satisfy:
+
+```math
+E_{\mathrm{rel}} = \frac{|x_{\mathrm{num}}(10)-e^{10}|}{e^{10}} \leq 10^{-3}.
+```
+
+For each fixed-step solver independently, the step-selection procedure started at `h = 1.0` and repeatedly halved `h` until the requirement was met. This selects the **first acceptable step from the tested sequence**, not the mathematically largest possible acceptable step. The exact endpoint solution is known for this test problem; this selection procedure is not a general-purpose error estimator for arbitrary ODEs.
+
+| Metric | Euler | RK4 |
+|---|---:|---:|
+| Selected `h` | 0.0001220703125 | 0.25 |
+| Steps | 81,920 | 40 |
+| RHS evaluations | 81,920 | 160 |
+| Relative endpoint error | 0.000610116 | 0.000264434 |
+| Example time per `solve()` | 3,054.63 µs | 5.111 µs |
+
+Both solvers meet the specified endpoint-error requirement. Their RHS evaluation counts differ by a factor of **512**. In the illustrated timing run, RK4 was approximately **598 times faster** than Euler; this ratio should not be interpreted as a statistically established speedup because runtime measurements varied across sessions.
+
+The step-count comparison is unambiguous: for this smooth test problem, the higher-order RK4 method achieves the error target with far fewer steps. The measured runtimes are consistent with a large overall performance advantage, but its exact magnitude is not established by these exploratory timings.
+
+### 3. Adaptive RK4: tolerance and computational work
+
+The project's adaptive method estimates local **absolute** error through RK4 step doubling: one full step plus two half-steps, each involving four evaluations of `rhs`. Thus, each *attempted* step performs **12 RHS evaluations** in the current implementation. Rejected attempts also incur this cost, but do not add an accepted point to `Trajectory`.
+
+The initial proposed step was `h = 1.0`; the following results were obtained for the same exponential-growth problem:
+
+| Metric | Local tolerance `1e-3` | Local tolerance `1e-6` |
+|---|---:|---:|
+| Accepted steps | 30 | 122 |
+| Rejected attempts | 5 | 1 |
+| Total attempted steps | 35 | 123 |
+| RHS evaluations | 420 | 1,476 |
+| Observed relative endpoint error | 0.000641113 | 0.00000316721 |
+| Example time per `solve()` | 11.147 µs | 39.865 µs |
+
+RHS counts were collected using a diagnostic `CountingSystem` wrapper around `OdeSystem`, in **separate runs** from timing measurements. The counts support the reconstruction:
+
+```math
+N_{\mathrm{rejected}} = \frac{N_{\mathrm{rhs}}}{12} - N_{\mathrm{accepted}}.
+```
+
+In this experiment, tightening the tolerance increased computational work and reduced the *observed* global endpoint error. However, rejected attempts need not increase monotonically: here the stricter run produced **fewer** rejections. Critically, the adaptive solver's **local absolute tolerance is not a bound on global relative endpoint error**; the two should not be equated.
+
+The fixed-step RK4 run above is faster than the `1e-3` adaptive run for this particular smooth problem. This does **not** establish that adaptive integration is generally inferior: it has different strengths when the appropriate step size varies significantly over the integration interval.
+
+### 4. Profiling with GNU `gprof`
+
+`perf` was not installed in the working WSL2 environment. GNU `gprof` (Binutils 2.46) was available and used for an initial function-level investigation.
+
+A separate build was created with optimization, debug symbols, and profiling instrumentation:
+
+```bash
+cmake -S . -B build-profile \
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+  -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g -pg" \
+  -DCMAKE_EXE_LINKER_FLAGS="-pg"
+cmake --build build-profile --target SolverBenchmark
+./build-profile/SolverBenchmark
+gprof ./build-profile/SolverBenchmark gmon.out > profile_euler.txt
+```
+
+To reproduce the Euler-only profile, configure `main()` to run only the Euler benchmark and pass `1000` repetitions to the benchmark function before rebuilding. The normal executable runs the fixed-step and adaptive experiments with the default 100 repetitions. The separate profiling configuration is achieved by temporarily selecting the Euler workload and increasing the repetition count; no dedicated profile target is defined in CMake.
+
+For the longer **Euler-only** profiling workload (temporarily configured to use **1,000 benchmark repetitions**), `gprof` attributed approximately **1.21 s** of sampled self time, equivalent to roughly **121 samples** at a reported interval of 0.01 s. The main flat-profile entries were:
+
+| Function | Share of sampled self time |
+|---|---:|
+| `EulerSolver::solve` | 41.32% |
+| `std::vector<SolutionPoint>::_M_realloc_append` | 22.31% |
+| `_init` | 21.49% |
+| `main` | 9.09% |
+| `ExponentialGrowth::rhs` | 5.79% |
+
+The presence of `std::vector` reallocation-related work suggested that growing `Trajectory` might be costly. However, **these percentages belong to an instrumented binary**, are sensitive to sampling and attribution, and cannot be read as exact Release-mode bottleneck percentages. The large `_init` share is particularly difficult to interpret and was not treated as a verified optimization target. No independent allocation-count or peak-memory profile was collected.
+
+### 5. An optimization hypothesis that did not hold
+
+`EulerSolver::solve()` appends each point to `Trajectory` using `push_back()`. We tested preallocating the container with `std::vector::reserve()` when an estimate of the number of points was within a conservative limit. This leaves the numerical stepping and returned points unchanged; it reduces possible growth reallocations, but it does **not** preallocate dynamic storage inside each `Eigen::VectorXd`.
+
+We compared ordinary **Release** builds using an A–B–A sequence, where A had no preallocation and B enabled it. Each stage contained three separate program runs; each run averaged **1,000 complete solves** of the 81,920-step Euler problem.
+
+| Stage | Configuration | Median time per `solve()` |
+|---|---|---:|
+| A1 | Without `reserve()` | 3,284.30 µs |
+| B | With `reserve()` | 4,596.87 µs |
+| A2 | Without `reserve()` again | 3,027.07 µs |
+
+The `reserve()` version was roughly **40% slower than A1** and **52% slower than A2**. Returning to the original implementation also returned performance to a similar range. All **30 GoogleTest tests** passed with the experimental change, and the recorded endpoint values, step count, and error were unchanged.
+
+**Decision:** the preallocation change was **not retained**. These A–B–A results provide evidence of a repeatable regression for the tested setup, but do **not** establish its exact cause or imply that `reserve()` is generally harmful. The discrepancy between a reallocation-heavy `gprof` profile and slower Release measurements underlines why proposed optimizations must be validated empirically.
+
+### Conclusions and limitations
+
+- **Cost depends on the comparison criterion.** At equal step size, RK4 takes longer than Euler; at a fixed endpoint-error target on this problem, RK4 takes far fewer steps and is dramatically cheaper overall.
+- **Accepted steps alone understate adaptive work.** Rejected attempts and repeated stage evaluations matter; instrumented RHS counting provides a useful algorithmic metric independently of timing noise.
+- **Profiling yields hypotheses, not proof of speedup.** The tested `reserve()` optimization preserved correctness but slowed this workload, and was therefore rejected.
+- **Representativeness is limited.** The task is scalar and smooth; WSL2 scheduling and CPU state affect timings; results may differ for larger state dimensions, expensive `rhs()` implementations, other systems, compilers, and hardware. Most timing comparisons were exploratory, not rigorously controlled statistical studies.
+
+Further profiling of dynamic Eigen allocations, trajectory storage, and higher-dimensional systems has not yet been performed.
+
+---
+
 ## Building
 
 ### Requirements
 
 - CMake **3.16 or newer**.
-
 - A compatible C++ compiler and build tool (the project enables `/W4` for MSVC or `-Wall -Wextra -Wpedantic` for other compilers).
-
 - Network access on the first configuration so CMake `FetchContent` can download **Eigen 3.4.0** and **GoogleTest 1.14.0**.
 
-**C++ standard:** the supplied `CMakeLists.txt` does not explicitly set `CMAKE_CXX_STANDARD` or `target_compile_features`. The exact minimum supported standard has therefore not been established by the project's build configuration. Pinning and testing a standard is a future reproducibility improvement.
+**C++ standard:** the project explicitly requires **C++17** through `CMAKE_CXX_STANDARD 17`, `CMAKE_CXX_STANDARD_REQUIRED ON`, and `CMAKE_CXX_EXTENSIONS OFF`.
 
 ### Configure and build
 
@@ -569,7 +712,7 @@ Then build:
 cmake --build build
 ```
 
-The CMake configuration defines three executable targets: `main`, `ODESolverTests`, and `Eigen_test`.
+The CMake configuration defines four executable targets: `main`, `ODESolverTests`, `Eigen_test`, and `SolverBenchmark`. The performance executable can be built separately with `cmake --build build --target SolverBenchmark`.
 
 ---
 
@@ -597,7 +740,7 @@ To run a specific GoogleTest test:
 
 ## Current limitations
 
-The current implementation deliberately has a limited scope. It supports:
+The implementation has a deliberately limited scope. It supports:
 
 - scalar and vector-valued ODE systems through `Eigen::VectorXd`;
 
@@ -625,7 +768,8 @@ Current limitations include:
 
 - A production-level safeguard against excessive rejected attempts and comprehensive validation of error-controller intermediates are not implemented.
 
-- Systematic benchmarking, profiling, continuous integration, and extended public API documentation are not yet implemented.
+- A standalone benchmark and an initial function-level profiling study have been implemented, but comprehensive benchmarking across systems, state dimensions, and hardware has not been completed.
+- Continuous integration and extended public API documentation are not yet implemented.
 
 These features are intentionally outside the current implementation scope.
 
