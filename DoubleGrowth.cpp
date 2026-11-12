@@ -1,7 +1,7 @@
 #include "DoubleGrowth.h"
 
 void ode::DoubleGrowth::rhs(
-            double t,
+            double,
             const State& x,
             State& dxdt
         ) const {

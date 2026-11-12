@@ -1,7 +1,7 @@
 #include "HarmonicOscillator.h"
 
 void ode::HarmonicOscillator::rhs(
-            double t,
+            double,
             const State& x,
             State& dxdt
         ) const {

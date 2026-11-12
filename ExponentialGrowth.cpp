@@ -1,7 +1,7 @@
 #include "ExponentialGrowth.h"
 
 void ode::ExponentialGrowth::rhs(
-            double t,
+            double,
             const State& x,
             State& dxdt
         ) const {

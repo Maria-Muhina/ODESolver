@@ -2,7 +2,7 @@
 
 void ode::TimeDependentSystem::rhs(
             double t,
-            const State& x,
+            const State&,
             State& dxdt
         ) const {
     dxdt(0) = t;
