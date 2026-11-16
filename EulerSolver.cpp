@@ -21,7 +21,7 @@ ode::Trajectory ode::EulerSolver::solve(
                 throw std::runtime_error("Time step does not advance time");
             }
             double step = next_t - t;
-            system.rhs(t, x, dxdt);
+            ode::checked_rhs(system, t, x, dxdt);
             x = x + step * dxdt;
             t = next_t;
             result.push_back({t, x});

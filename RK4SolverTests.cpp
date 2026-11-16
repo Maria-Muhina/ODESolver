@@ -2,6 +2,8 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
+#include <limits>
 
 #include "OdeTypes.h"
 #include "RK4Solver.h"
@@ -304,5 +306,34 @@ TEST(RK4SolverTest, DecayUnstable) {
     EXPECT_GT(
         std::abs(result.back().x(0)),
         std::abs(result.front().x(0))
+    );
+}
+
+namespace {
+
+class WrongDimensionSystem : public ode::OdeSystem {
+public:
+    void rhs(
+        double,
+        const ode::State&,
+        ode::State& dxdt
+    ) const override {
+        dxdt.resize(2);
+        dxdt << 1.0, 2.0;
+    }
+};
+
+} // namespace
+
+TEST(RK4SolverTest, RejectsRhsDimensionMismatch) {
+    ode::RK4Solver solver;
+    WrongDimensionSystem system;
+
+    ode::State x0(3);
+    x0 << 1.0, 2.0, 3.0;
+
+    EXPECT_THROW(
+        solver.solve(system, 0.0, x0, 0.3, 0.1),
+        std::runtime_error
     );
 }

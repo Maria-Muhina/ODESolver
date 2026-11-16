@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 #include "EulerSolver.h"
 #include "ExponentialGrowth.h"
@@ -332,4 +333,33 @@ TEST(EulerSolverTest, DecayAccuracyComparison) {
     EXPECT_LT(error_005, error_015);
     EXPECT_NEAR(result_005.back().t, 1.0, 1e-10);
     EXPECT_NEAR(result_015.back().t, 1.0, 1e-10);
+}
+
+namespace {
+
+class WrongDimensionSystem : public ode::OdeSystem {
+public:
+    void rhs(
+        double,
+        const ode::State&,
+        ode::State& dxdt
+    ) const override {
+        dxdt.resize(2);
+        dxdt << 1.0, 2.0;
+    }
+};
+
+} // namespace
+
+TEST(EulerSolverTest, RejectsRhsDimensionMismatch) {
+    ode::EulerSolver solver;
+    WrongDimensionSystem system;
+
+    ode::State x0(3);
+    x0 << 1.0, 2.0, 3.0;
+
+    EXPECT_THROW(
+        solver.solve(system, 0.0, x0, 0.3, 0.1),
+        std::runtime_error
+    );
 }

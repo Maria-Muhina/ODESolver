@@ -14,4 +14,11 @@ namespace ode {
             throw std::invalid_argument("Start time cannot be greater than end time");
         }
     }
+
+    void checked_rhs(const OdeSystem& system, double t, const State& x, State& dxdt){
+        system.rhs(t, x, dxdt);
+        if (dxdt.size() != x.size()) {
+            throw std::runtime_error("RHS dimension mismatch");
+        }
+    }
 }
