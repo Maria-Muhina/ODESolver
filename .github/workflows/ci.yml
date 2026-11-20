@@ -9,9 +9,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
       - name: Configure
         run: cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+
       - name: Build
         run: cmake --build build-ci --target ODESolverTests
+
       - name: Test
         run: ctest --test-dir build-ci --output-on-failure

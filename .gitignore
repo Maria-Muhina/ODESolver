@@ -4,9 +4,7 @@ build/
 
 Testing/
 
-/build-release/
-/build-profile/
+/build*/
 /profile.txt
 /profile_euler.txt
 /gmon.out
-/build-sanitize/
